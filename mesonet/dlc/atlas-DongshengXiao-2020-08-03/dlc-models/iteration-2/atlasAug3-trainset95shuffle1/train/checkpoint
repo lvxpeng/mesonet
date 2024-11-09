@@ -1,0 +1,6 @@
+model_checkpoint_path: "C:\\Users\\user\\Desktop\\mesonet\\atlas-DongshengXiao-2020-08-03\\dlc-models\\iteration-2\\atlasAug3-trainset95shuffle1\\train\\snapshot-1030000"
+all_model_checkpoint_paths: "C:\\Users\\user\\Desktop\\mesonet\\atlas-DongshengXiao-2020-08-03\\dlc-models\\iteration-2\\atlasAug3-trainset95shuffle1\\train\\snapshot-850000"
+all_model_checkpoint_paths: "C:\\Users\\user\\Desktop\\mesonet\\atlas-DongshengXiao-2020-08-03\\dlc-models\\iteration-2\\atlasAug3-trainset95shuffle1\\train\\snapshot-900000"
+all_model_checkpoint_paths: "C:\\Users\\user\\Desktop\\mesonet\\atlas-DongshengXiao-2020-08-03\\dlc-models\\iteration-2\\atlasAug3-trainset95shuffle1\\train\\snapshot-950000"
+all_model_checkpoint_paths: "C:\\Users\\user\\Desktop\\mesonet\\atlas-DongshengXiao-2020-08-03\\dlc-models\\iteration-2\\atlasAug3-trainset95shuffle1\\train\\snapshot-1000000"
+all_model_checkpoint_paths: "C:\\Users\\user\\Desktop\\mesonet\\atlas-DongshengXiao-2020-08-03\\dlc-models\\iteration-2\\atlasAug3-trainset95shuffle1\\train\\snapshot-1030000"
