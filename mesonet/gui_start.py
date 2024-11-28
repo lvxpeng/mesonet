@@ -28,3 +28,4 @@ def gui_start(gui_type="test", git_repo="", config_file=""):
 
 if __name__ == "__main__":
     gui_start()
+    # gui_start('train')

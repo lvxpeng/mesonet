@@ -9,7 +9,7 @@ import os
 from mesonet.utils import parse_yaml
 from keras.models import load_model
 
-
+#----------------------------------------预测特定区域-----------------------------------------------------------------
 def predictRegion(
     input_file,
     num_images,
@@ -64,6 +64,25 @@ def predictRegion(
     regions in a consistent order (left to right by hemisphere, then top to bottom for vertically aligned regions). This
     approach may be more flexible if you're using a custom brain atlas (i.e. not one in which region is filled with a
     unique number).
+    input_file: 包含脑图像的输入文件夹。
+    num_images: 需要分析的脑图像数量。
+    model: 要使用的预测模型（.hdf5 文件）。
+    output: 所有文件将被保存的总体输出文件夹。
+    mat_save: 选择是否将每个脑区轮廓和中心保存为 .mat 文件（用于 MATLAB）。
+    threshold: 分割算法的阈值。
+    mask_generate: 选择是否仅从该函数生成脑轮廓的掩码。
+    git_repo_base: 包含 MesoNet 必要资源（参考图谱、DeepLabCut 配置文件等）的基本 Git 存储库路径。
+    atlas_to_brain_align: 如果为 True，则将图谱变形并注册到脑图像；如果为 False，则将脑图像变形并注册到图谱。
+    dlc_pts: 由 DeepLabCut 模型确定的脑图谱配准的地标。
+    atlas_pts: 来自原始脑图谱的脑图谱配准的地标。
+    region_labels: 选择是否尝试根据艾伦研究所小鼠脑图谱给每个区域命名。
+    olfactory_check: 如果为 True，在脑图像上绘制嗅球轮廓。
+    use_unet: 选择是否使用 U-net 模型识别皮层边界。
+    plot_landmarks: 如果为 True，在最终脑图像上绘制 DeepLabCut 地标（大圆圈）和原始对齐地标（小圆圈）。
+    atlas_label_list: 一个列表，其中包含每个脑区填充了唯一数字标签的对齐图谱。这允许在图像之间一致地识别脑区。如果 original_label 为 True，则这是一个空列表。
+    align_once: 如果为 True，基于第一个图谱和脑的对齐执行所有对齐。如果相机位置固定且有许多同一脑的帧，这可以节省时间。
+    region_labels: 选择是否根据现有的脑图谱给每个区域分配名称（目前未实现）。
+    original_label: 如果为 True，使用一种试图自动按一致顺序排序脑区的脑区标记方法（从左到右按半球，然后从上到下对垂直排列的区域进行排序）。这种方法在使用自定义脑图谱时可能更灵活（即不是每个区域都填充了唯一数字的图谱）
     """
     # Create and define save folders for each output of the prediction
     # Output folder for basic mask (used later in prediction)
@@ -83,7 +102,7 @@ def predictRegion(
         model_to_use = load_model(model)
     # Resizes and prepares images for prediction
     print(input_file)
-    test_gen = testGenerator(
+    test_gen = testGenerator(    #调整图像和模型兼容
         input_file,
         output_mask_path,
         num_images,

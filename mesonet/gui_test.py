@@ -584,17 +584,17 @@ class Gui(object):
             row=0, column=9, columnspan=1, padx=2, sticky=N + S + W + E
         )
 
-        # 1. Atlas-to-brain
+        # 1. Atlas-to-brain    第一个管线
         self.atlasToBrainButton = Button(
             self.root,
             text="1 - Atlas to brain",
-            command=lambda: self.EnterThread("atlas_to_brain"),
+            command=lambda: self.EnterThread("atlas_to_brain"),    #单线程执行atlas_to_brain方法
         )
         self.atlasToBrainButton.grid(
             row=1, column=9, columnspan=1, padx=2, sticky=N + S + W + E
         )
 
-        # 2. Brain-to-atlas
+        # 2. Brain-to-atlas   第二个管线
         self.brainToAtlasButton = Button(
             self.root,
             text="2 - Brain to atlas",
@@ -604,7 +604,7 @@ class Gui(object):
             row=2, column=9, columnspan=1, padx=2, sticky=N + S + W + E
         )
 
-        # 3. Atlas-to-brain + sensory maps
+        # 3. Atlas-to-brain + sensory maps     第三个管线
         self.atlasToBrainSensoryButton = Button(
             self.root,
             text="3 - Atlas to brain +\nsensory maps",
@@ -614,7 +614,7 @@ class Gui(object):
             row=3, column=9, columnspan=1, padx=2, sticky=N + S + W + E
         )
 
-        # 4. Motif-based functional maps (MBFMs) + U-Net
+        # 4. Motif-based functional maps (MBFMs) + U-Net     第四个管线
         self.MBFMUNetButton = Button(
             self.root,
             text="4 - Motif-based functional maps (MBFMs) +\nMBFM-U-Net",
@@ -624,7 +624,7 @@ class Gui(object):
             row=4, column=9, columnspan=1, padx=2, sticky=N + S + W + E
         )
 
-        # 5. Motif-based functional maps (MBFMs) + Brain-to-atlas + VoxelMorph
+        # 5. Motif-based functional maps (MBFMs) + Brain-to-atlas + VoxelMorph       第五个管线
         self.MBFMBrainToAtlasVxmButton = Button(
             self.root,
             text="5 - Motif-based functional maps (MBFMs) +\nBrain-to-atlas + VoxelMorph",
@@ -1111,9 +1111,9 @@ class Gui(object):
         elif command == "atlas_to_brain":
             threading.Thread(
                 target=self.PredictDLC(
-                    self.config_path,
-                    self.folderName,
-                    self.saveFolderName,
+                    self.config_path,   #config文件位置
+                    self.folderName,    #输入文件夹
+                    self.saveFolderName,     #输出文件夹
                     False,
                     0,
                     "",
@@ -1352,7 +1352,7 @@ class Gui(object):
         atlas_label_list = []
         coords_input_file = ""
         # if mask_generate and not haveMasks and atlas_to_brain_align and use_unet:
-        if mask_generate and not haveMasks and use_unet:
+        if mask_generate and not haveMasks and use_unet:   #生成mask  三个参数值为1，0，1
             pts = []
             pts2 = []
             predictRegion(
@@ -1362,9 +1362,9 @@ class Gui(object):
                 output,
                 mat_save,
                 threshold,
-                mask_generate,
+                mask_generate,   #true
                 git_repo_base,
-                atlas_to_brain_align,
+                atlas_to_brain_align,  #true
                 pts,
                 pts2,
                 olfactory_check,

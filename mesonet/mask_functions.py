@@ -22,7 +22,7 @@ from PIL import Image
 import pandas as pd
 from keras import backend as k
 from polylabel import polylabel
-
+#--------------------------------------------------掩码相关函数--------------------------------------------------------
 # Set background colour as black to fix issue with more than one background region being identified.
 Background = [0, 0, 0]
 # Foreground (cortex) should be rendered as white.
@@ -78,7 +78,7 @@ def testGenerator(
         img = io.imread(
             os.path.join(output_mask_path, "{}.{}".format(i, suff)), as_gray=as_gray
         )
-        if img.dtype == "uint8":
+        if img.dtype == "uint8":   #把0-255的像素值归一化到0-1
             img = img / 255
         img = np.reshape(img, img.shape + (1,)) if (not flag_multi_class) else img
         img = np.reshape(img, (1,) + img.shape)
@@ -296,7 +296,7 @@ def inpaintMask(mask):
     return mask
 
 
-def applyMask(
+def applyMask(    #生成的掩码应用于原始图像
     image_path,
     mask_path,
     save_path,
@@ -360,7 +360,7 @@ def applyMask(
         if use_dlc and align_once:
             image_name_arr = glob.glob(os.path.join(mask_path, "*_brain_warp.png"))
         else:
-            image_name_arr = glob.glob(os.path.join(image_path, "*.png"))
+            image_name_arr = glob.glob(os.path.join(image_path, "*.png"))  #获取全部原图
         image_name_arr.sort(key=natural_sort_key)
         if tif_list:
             tif_stack = imageio.mimread(os.path.join(image_path, tif_list[0]))
@@ -585,42 +585,42 @@ def applyMask(
                     atlas_bw.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE
                 )[-2:]
             labels_cnts = []
-            for (num_label, cnt_orig) in enumerate(cnts_orig):
-                labels_cnts.append(cnt_orig)
+            for (num_label, cnt_orig) in enumerate(cnts_orig): #遍历 cnts_orig 列表中的每个轮廓，并同时获取其索引 num_label 和轮廓本身 cnt_orig
+                labels_cnts.append(cnt_orig)  #将当前轮廓 cnt_orig 添加到 labels_cnts 列表中
                 try:
-                    cv2.drawContours(img, cnt_orig, -1, (255, 0, 0), 1)
+                    cv2.drawContours(img, cnt_orig, -1, (255, 0, 0), 1)  #在图像 img 上绘制轮廓 cnt_orig，轮廓颜色为蓝色
                 except:
                     print("Could not draw contour!")
-                # try:
+                # try:  将轮廓点转换为列表形式
                 if atlas_to_brain_align:
                     c_orig_as_list = cnt_orig.tolist()
                     c_orig_as_list = [[c_val[0] for c_val in c_orig_as_list]]
                 else:
                     c_orig_as_list = cnt_orig.tolist()
                     c_orig_as_list = [[c_val[0] for c_val in c_orig_as_list]]
-                orig_polylabel = polylabel(c_orig_as_list)
-                orig_x, orig_y = int(orig_polylabel[0]), int(orig_polylabel[1])
+                orig_polylabel = polylabel(c_orig_as_list)  #使用 polylabel 函数计算轮廓的多边形中心点 orig_polylabel
+                orig_x, orig_y = int(orig_polylabel[0]), int(orig_polylabel[1])  #将中心点的坐标转换为整数类型 orig_x 和 orig_y
 
                 if not original_label and atlas_to_brain_align:
-                    label_to_use = unique_regions.index(labels_from_region[num_label])
+                    label_to_use = unique_regions.index(labels_from_region[num_label])#从 unique_regions 中找到对应的标签
                     (text_width, text_height) = cv2.getTextSize(
                         str(label_to_use), cv2.FONT_HERSHEY_SIMPLEX, 0.4, thickness=1
-                    )[0]
+                    )[0]    #计算标签文本的宽度和高度
                     label_jitter = 0
                     label_color = (0, 0, 255)
-                    cv2.rectangle(
+                    cv2.rectangle(   #绘制一个矩形背景
                         img,
-                        (orig_x + label_jitter, orig_y + label_jitter),
+                        (orig_x + label_jitter, orig_y + label_jitter),   #矩形左上角坐标
                         (
                             orig_x + label_jitter + text_width,
-                            orig_y + label_jitter - text_height,
+                            orig_y + label_jitter - text_height,#矩形右下角坐标
                         ),
                         (255, 255, 255),
                         cv2.FILLED,
                     )
-                    cv2.putText(
+                    cv2.putText(    #在图像上添加文本
                         img,
-                        str(label_to_use),
+                        str(label_to_use),  #文本内容
                         (int(orig_x + label_jitter), int(orig_y + label_jitter)),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.4,
@@ -628,11 +628,12 @@ def applyMask(
                         1,
                     )
                     label_num += 1
-                orig_list.append((orig_x, orig_y))
+                    #orig_x：中心点x；bregma_x：基准点x；
+                orig_list.append((orig_x, orig_y))#将当前轮廓的中心点 (orig_x, orig_y) 添加到 orig_list 中
                 orig_list_labels.append(
                     (orig_x - bregma_x, orig_y - bregma_y, orig_x, orig_y, num_label)
                 )
-                if (orig_x - bregma_x) < 0:
+                if (orig_x - bregma_x) < 0:  #中心点在基准点的左侧
                     orig_list_labels_left.append(
                         (
                             orig_x - bregma_x,
@@ -654,13 +655,13 @@ def applyMask(
                     )
                 orig_list.sort()
             orig_list_labels_sorted_left = sorted(
-                orig_list_labels_left, key=lambda t: t[0], reverse=True
+                orig_list_labels_left, key=lambda t: t[0], reverse=True  #按元组x 偏移量进行降序排序
             )
             orig_list_labels_sorted_right = sorted(
                 orig_list_labels_right, key=lambda t: t[0]
             )
-            flatten = lambda l: [obj for sublist in l for obj in sublist]
-            orig_list_labels_sorted = flatten(
+            flatten = lambda l: [obj for sublist in l for obj in sublist]#将嵌套列表展平为一维列表
+            orig_list_labels_sorted = flatten(  #合并并展平后的标签信息列表，包含所有轮廓的标签信息
                 [orig_list_labels_sorted_left, orig_list_labels_sorted_right]
             )
             vertical_check = np.asarray([val[0] for val in orig_list_labels_sorted])
@@ -670,7 +671,7 @@ def applyMask(
                 vertical_matches = np.asarray(orig_list_labels_sorted)[
                     vertical_close_slice
                 ]
-                if len(vertical_close_slice) > 1:
+                if len(vertical_close_slice) > 1:  #有多个标签的 x 偏移量相近（即 len(vertical_close_slice) > 1），则按 y 偏移量对这些标签进行排序
                     vertical_match_sorted = sorted(vertical_matches, key=lambda t: t[1])
                     orig_list_labels_sorted_np = np.asarray(orig_list_labels_sorted)
                     orig_list_labels_sorted_np[
@@ -678,7 +679,7 @@ def applyMask(
                     ] = vertical_match_sorted
                     orig_list_labels_sorted = orig_list_labels_sorted_np.tolist()
             img = np.uint8(img)
-        else:
+        else:  #绘制所有轮廓
             for num_label, cnt_orig in enumerate(cnts_orig):  # cnts_orig
                 try:
                     cv2.drawContours(img, cnt_orig, -1, (255, 0, 0), 1)

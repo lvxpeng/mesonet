@@ -13,6 +13,7 @@ import cv2
 import pandas as pd
 import skimage.io as io
 
+# ------------------------------------------图像增强---------------------------------------------------------------------
 
 def img_augment_run(input_path, output_path, coords_input, data_gen_args):
     flatten = lambda l: [obj for sublist in l for obj in sublist]

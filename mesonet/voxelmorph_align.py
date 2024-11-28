@@ -14,7 +14,7 @@ from mesonet.mask_functions import *
 import numpy as np
 import voxelmorph as vxm
 from skimage.color import rgb2gray
-
+#---------------------------------------------------使用 VoxelMorph 方法进行图像对齐---------------------------------------
 
 def vxm_data_generator(x_data, template, batch_size=1):
     """
@@ -126,6 +126,12 @@ def voxelmorph_align(model_path, img_path, template, exist_transform, flow_path)
     :param flow_path: (required) The path to the directory to which the VoxelMorph flow field from the current
     transformation should be saved.
     :return:
+    model_path: （必需）要使用的 VoxelMorph 模型的路径。默认情况下，该路径位于 MesoNet 仓库中的 mesonet/models/voxelmorph。
+   img_path: （必需）要使用 VoxelMorph 对齐的图像的路径。
+   template: （必需）VoxelMorph 模板图像的路径，输入图像将对齐到该模板图像，创建应用于输出图像的变换。
+   exist_transform: （必需）如果为 True，则使用现有的 VoxelMorph 流场（与每个 VoxelMorph 变换图像一起保存的 .npy 文件）来执行变换（而不是计算新的流场）。
+   flow_path: （必需）当前变换生成的 VoxelMorph 流场应保存的目录路径。
+   return: 返回对齐后的输出图像和相应的流场
     """
     if not exist_transform:
         vxm_model = init_vxm_model(img_path, model_path)

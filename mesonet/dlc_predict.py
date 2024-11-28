@@ -194,27 +194,27 @@ def DLCPredict(
         os.chdir(video_output_path)
 
         print("Landmark prediction complete!")
-        if not atlas:
+        if not atlas:    #true
             atlasBrainMatch(
                 input_file,
                 sensory_img_dir,
-                coords_input,
-                sensory_match,
-                mat_save,
-                threshold,
+                coords_input,   #'dlc_output\\tmp_videoDLC_resnet50_atlasAug3shuffle1_1030000.csv'
+                sensory_match,   #false
+                mat_save,   #true
+                threshold,   #0.01
                 git_repo_base,
-                region_labels,
+                region_labels,  #false
                 landmark_arr,
-                use_unet,
-                use_dlc,
-                atlas_to_brain_align,
+                use_unet,   #true
+                use_dlc,    #true
+                atlas_to_brain_align,   #true
                 model,
-                olfactory_check,
-                plot_landmarks,
+                olfactory_check,   #true
+                plot_landmarks,   #true
                 align_once,
                 original_label,
-                use_voxelmorph,
-                exist_transform,
+                use_voxelmorph, #false
+                exist_transform, #false
                 voxelmorph_model,
                 template_path,
                 flow_path,

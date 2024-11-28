@@ -22,8 +22,8 @@ import fnmatch
 import glob
 from PIL import Image
 
-
-def find_peaks(img):
+# ------------------------------------------------- 脑图谱与大脑图像的匹配-------------------------------------------------------
+def find_peaks(img): #找到图像中的峰值点
     """
     Locates the peaks of cortical activity in each hemisphere of the brain image.
     :param img: A sensory map (indicating functional activation in the mouse brain).
@@ -174,16 +174,18 @@ def getMaskContour(mask_dir, atlas_img, predicted_pts, actual_pts, cwd, n, main_
     mask = cv2.imread(mask_dir, cv2.IMREAD_GRAYSCALE)
     atlas_to_warp = atlas_img
     mask = np.uint8(mask)
+    #从mask图像中提取轮廓点
     cnts, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[-2:]
     for cnt in cnts:
         cnt = cnt[:, 0, :]
         cnt = np.asarray(cnt).astype("float32")
         c_landmarks = np.concatenate((c_landmarks, cnt))
         c_atlas_landmarks = np.concatenate((c_atlas_landmarks, cnt))
+    #预测landmarks
     c_landmarks = np.concatenate((c_landmarks, predicted_pts))
     c_atlas_landmarks = np.concatenate((c_atlas_landmarks, actual_pts))
-    tform = PiecewiseAffineTransform()
-    tform.estimate(c_atlas_landmarks, c_landmarks)
+    tform = PiecewiseAffineTransform()  #非刚性变换
+    tform.estimate(c_atlas_landmarks, c_landmarks)   #估计变换参数
     dst = warp(atlas_to_warp, tform, output_shape=(512, 512))
     if main_mask:
         io.imsave(os.path.join(cwd, "mask_{}.png".format(n)), mask)
@@ -300,7 +302,7 @@ def atlasBrainMatch(
     if not os.path.isdir(output_overlay_path):
         os.mkdir(output_overlay_path)
 
-    if not atlas_to_brain_align:
+    if not atlas_to_brain_align:  #false
         im = cv2.imread(
             os.path.join(git_repo_base, "atlases/Atlas_workflow2_binary.png")
         )
@@ -378,7 +380,7 @@ def atlasBrainMatch(
     peak_arr_total = []
 
     # If matching to peaks of sensory activation method is being used
-    if sensory_match:
+    if sensory_match:    #1,2:false   3:true
         for num, file in enumerate(brain_img_arr):
             img_name = str(os.path.splitext(os.path.basename(file))[0])
             sensory_img_for_brain = os.path.join(sensory_img_dir, img_name)
@@ -766,7 +768,7 @@ def atlasBrainMatch(
                 warp_coords_brain_atlas_right = cv2.getAffineTransform(
                     dlc_pts_right, atlas_pts_right
                 )
-                if atlas_to_brain_align:
+                if atlas_to_brain_align:  #true
                     atlas_warped_left = cv2.warpAffine(
                         im_left, warp_coords_left, im_final_size
                     )
@@ -826,10 +828,10 @@ def atlasBrainMatch(
             # If 4 or more points
             if len(atlas_pts_for_input[0]) >= 4:
                 atlas_mask_left_warped = cv2.warpAffine(
-                    atlas_mask_left, warp_coords_left, (512, 512)
+                    atlas_mask_left, warp_coords_left, (512, 512)  #warp_coords_left 左半球变换矩阵
                 )
                 atlas_mask_right_warped = cv2.warpAffine(
-                    atlas_mask_right, warp_coords_right, (512, 512)
+                    atlas_mask_right, warp_coords_right, (512, 512)  #warp_coords_right 右半球变换矩阵
                 )
                 atlas_mask_warped = cv2.bitwise_or(
                     atlas_mask_left_warped, atlas_mask_right_warped
@@ -892,11 +894,11 @@ def atlasBrainMatch(
                     mask_warped_to_use = cv2.cvtColor(
                         mask_warped_to_use, cv2.COLOR_BGR2GRAY
                     )
-                img_edited = Image.open(mask_path)
+                img_edited = Image.open(mask_path)  #打开mask文件夹，找到n_mask_warpet_left/right.png
                 # Generates a transparent version of the brain atlas.
                 img_rgba = img_edited.convert("RGBA")
                 data = img_rgba.getdata()
-                for pixel in data:
+                for pixel in data:   #遍历每个像素，如果为白色255*255*255，则将其修改为透明
                     if pixel[0] == 255 and pixel[1] == 255 and pixel[2] == 255:
                         new_data.append((pixel[0], pixel[1], pixel[2], 0))
                     else:
@@ -1029,6 +1031,7 @@ def atlasBrainMatch(
                 olfactory_bulbs_to_use_list.append(
                     [olfactory_warped_left, olfactory_warped_right]
                 )
+                #brain_to_atlas_warped_left 和 brain_to_atlas_warped_right进行逻辑或运算（bitwise_or），然后将结果保存为一个新的图像文件
             brain_to_atlas_mask = cv2.bitwise_or(
                 brain_to_atlas_warped_left, brain_to_atlas_warped_right
             )
@@ -1063,10 +1066,10 @@ def atlasBrainMatch(
                         False,
                     )
                     atlas_mask_warped = getMaskContour(
-                        atlas_first_transform_path,
-                        atlas_mask_warped,
-                        sensory_peak_pts[align_val],
-                        sensory_atlas_pts[align_val],
+                        atlas_first_transform_path,  #mask_dir
+                        atlas_mask_warped,   #atlas_img
+                        sensory_peak_pts[align_val],   #predicted_pts
+                        sensory_atlas_pts[align_val], #actual_pts
                         cwd,
                         align_val,
                         False,
@@ -1156,6 +1159,7 @@ def atlasBrainMatch(
             bregma_list.append(dlc_pts[n][bregma_val])
 
     # Carries out VoxelMorph on each motif-based functional map (MBFM) that has been aligned to a raw brain image
+    #对每个已对齐到原始脑图像的基于模体的功能图（MBFM）执行 VoxelMorph
     if use_voxelmorph:
         align_once = True
         if len(dst_list) == 1:
@@ -1165,7 +1169,7 @@ def atlasBrainMatch(
         for (n_post, dst_post), vxm_template_post in zip(
                 enumerate([dst_list[n_to_use]]), [vxm_template_list[n_to_use]]
         ):
-            output_img, flow_post = voxelmorph_align(
+            output_img, flow_post = voxelmorph_align(      #调用voxelmorph_align进行配准
                 voxelmorph_model_path,
                 dst_post,
                 vxm_template_post,
