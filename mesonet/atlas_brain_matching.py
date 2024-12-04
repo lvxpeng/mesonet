@@ -286,7 +286,7 @@ def atlasBrainMatch(
 
     # 判断文件是否存在
     if files:
-        vxm_template_orig = cv2.imread(files[0])
+        vxm_template_orig = cv2.imread(files[0])  #图像的像素值
     else:
         # 抛出错误或处理异常
         raise FileNotFoundError(
@@ -340,7 +340,7 @@ def atlasBrainMatch(
     coord_circles_img = cv2.imread(
         os.path.join(
             git_repo_base, "atlases", "multi_landmark", "landmarks_new_binary.png"
-        ),
+        ),    #读取atlases/multi_landmark/landmarks_new_binary.png（9个标记点位）
         cv2.IMREAD_GRAYSCALE,
     )
     coord_circles_img = np.uint8(coord_circles_img)
@@ -439,10 +439,10 @@ def atlasBrainMatch(
         atlas_list = []
         for coord_x, coord_y in zip(x_coord_flat, y_coord_flat):
             dlc_coord = (coord_x, coord_y)
-            dlc_list.append(dlc_coord)
+            dlc_list.append(dlc_coord)    #预测的点位
         for coord_atlas in atlas_arr:
             atlas_coord = (coord_atlas[0], coord_atlas[1])
-            atlas_list.append(atlas_coord)
+            atlas_list.append(atlas_coord)      #模板提供的点位
         atlas_list = [atlas_list[i] for i in landmark_arr]
 
         # Initialize result as max value
@@ -451,12 +451,12 @@ def atlasBrainMatch(
 
         pts_dist = np.absolute(
             np.asarray(atlas_list) - np.asarray((im.shape[0] / 2, im.shape[1] / 2))
-        )
-        pts_avg_dist = [np.mean(v) for v in pts_dist]
-        bregma_index = np.argmin(np.asarray(pts_avg_dist))
+        )    #计算了atlas_list 中每个点与图像中心点之间的绝对距离差
+        pts_avg_dist = [np.mean(v) for v in pts_dist]   #pts_dist 中每个点到图像中心的距离平均值
+        bregma_index = np.argmin(np.asarray(pts_avg_dist)) #到具有最小平均距离的点索引
 
         for j in landmark_indices:
-            sub_dlc_pts.append([x_coord_flat[j], y_coord_flat[j]])
+            sub_dlc_pts.append([x_coord_flat[j], y_coord_flat[j]])#提取坐标
         for j in atlas_indices:
             sub_atlas_pts.append([atlas_arr[j][0], atlas_arr[j][1]])
 
@@ -495,7 +495,7 @@ def atlasBrainMatch(
         vxm_template = cv2.resize(vxm_template, (512, 512))
 
         align_val = n
-        if atlas_to_brain_align:
+        if atlas_to_brain_align:   #im：atals；      br：row image
             im = np.uint8(im)
             br = cv2.imread(br)
             br = np.uint8(br)
@@ -550,7 +550,7 @@ def atlasBrainMatch(
         atlas_mask_right = np.uint8(atlas_mask_right)
 
         atlas_mask = cv2.imread(atlas_mask_dir, cv2.IMREAD_UNCHANGED)
-        atlas_mask = cv2.resize(atlas_mask, (im.shape[0], im.shape[1]))
+        atlas_mask = cv2.resize(atlas_mask, (im.shape[0], im.shape[1])) #把atlas_mask调整为512x512
         atlas_mask = np.uint8(atlas_mask)
         mask_dir = os.path.join(cwd, "../output_mask/{}.png".format(n))
         if use_voxelmorph and n == 1:
@@ -949,8 +949,8 @@ def atlasBrainMatch(
                             )[-1]
                     else:
                         brain_to_atlas_warped_left = cv2.warpAffine(
-                            brain_atlas_transparent,
-                            warp_coords_brain_atlas_left,
+                            brain_atlas_transparent,   #原图像
+                            warp_coords_brain_atlas_left,  #变换矩阵
                             (512, 512),
                         )
                         if olfactory_check and use_unet:

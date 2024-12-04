@@ -234,8 +234,8 @@ def atlas_to_mask(
                         mask_input = cv2.bitwise_and(mask_input, mask_warped)
         else:
             # FOR ALIGNING BRAIN TO ATLAS
-            mask_input = cv2.bitwise_and(atlas, mask_warped)
-            mask_input_orig = cv2.bitwise_and(mask_input, mask_warped)
+            mask_input = cv2.bitwise_and(atlas, mask_warped) #对 atlas 和 mask_warped 进行逐像素的逻辑“与”运算，生成新的掩码图像 mask_input
+            mask_input_orig = cv2.bitwise_and(mask_input, mask_warped)#再次应用逻辑“与”运算以确保一致性
             if olfactory_check and len(olfactory_bulbs_to_use) > 0:
                 for bulb in olfactory_bulbs_to_use:
                     cv2.fillPoly(mask_input, pts=[bulb], color=[255, 255, 255])
@@ -353,6 +353,27 @@ def applyMask(    #生成的掩码应用于原始图像
     regions in a consistent order (left to right by hemisphere, then top to bottom for vertically aligned regions). This
     approach may be more flexible if you're using a custom brain atlas (i.e. not one in which each region is filled with
     a unique number).
+    使用模型输出的掩码将脑图像分割成脑区，并保存各种输出。
+   - `image_path`: 存储脑图像的文件夹路径。
+   - `mask_path`: 存储掩码的文件夹路径。
+   - `save_path`: 用于保存所有图像的整体文件夹路径。
+   - `segmented_save_path`: 用于保存分割/标注的脑图像的整体文件夹路径。
+   - `mat_save`: 选择是否将脑区输出为 .mat 文件。
+   - `threshold`: 设置前景分割的阈值。
+   - `git_repo_base`: 包含 MesoNet 必要资源（参考图谱、DeepLabCut 配置文件等）的基本 Git 存储库路径。
+   - `bregma_list`: bregma 位置列表（或最接近 bregma 的地标）。
+   - `region_labels`: 选择是否尝试根据艾伦研究所小鼠脑图谱给每个区域命名。
+   - `use_unet`: 选择是否使用 U-net 模型定义皮层边界。
+   - `atlas_to_brain_align`: 如果为 True，则将图谱对齐到每个脑图像。如果为 False，则将每个脑图像对齐到图谱。
+   - `model`: U-net 模型的名称（传递给 `mask_functions.py`）。
+   - `dlc_pts`: 由 DeepLabCut 模型确定的脑图谱配准地标。
+   - `atlas_pts`: 来自原始脑图谱的脑图谱配准地标。
+   - `olfactory_check`: 如果为 True，在脑图像上绘制嗅球轮廓。
+   - `plot_landmarks`: 如果为 True，在最终脑图像上绘制 DeepLabCut 地标（大圆圈）和原始对齐地标（小圆圈）。
+   - `atlas_label_list`: 一个列表，其中包含每个脑区填充了唯一数字标签的对齐图谱。这允许在图像之间一致地识别脑区。如果 `original_label` 为 True，则这是一个空列表。
+   - `align_once`: 如果为 True，基于第一个图谱和脑的对齐执行所有对齐。如果相机位置固定且有许多同一脑的帧，这可以节省时间。
+   - `region_labels`: 选择是否根据现有的脑图谱给每个区域分配名称（目前未实现）。
+   - `original_label`: 如果为 True，使用一种试图自动按一致顺序排序脑区的脑区标记方法（从左到右按半球，然后从上到下对垂直排列的区域进行排序）。这种方法在使用自定义脑图谱时可能更灵活（即不是每个区域都填充了唯一数字的图谱）。
     """
 
     tif_list = glob.glob(os.path.join(image_path, "*tif"))
@@ -545,7 +566,7 @@ def applyMask(    #生成的掩码应用于原始图像
             ]
             cnts_orig = []
             # Find contours in original aligned atlas
-            if atlas_to_brain_align and not original_label:
+            if atlas_to_brain_align and not original_label:   #对齐
                 np.savetxt(
                     "atlas_label_list_{}.csv".format(i),
                     atlas_label_list[i],
@@ -554,7 +575,7 @@ def applyMask(    #生成的掩码应用于原始图像
                 for region_idx in unique_regions:
                     if region_idx in [300, 400]:
                         # workaround to address olfactory contours not being found
-                        region = cv2.inRange(
+                        region = cv2.inRange(  #生成范围内的掩码
                             atlas_label_list[i], region_idx - 5, region_idx + 5
                         )
                         cnt_for_idx, hierarchy = cv2.findContours(
@@ -563,7 +584,7 @@ def applyMask(    #生成的掩码应用于原始图像
                         if len(cnt_for_idx) >= 1:
                             cnt_for_idx = cnt_for_idx[0]
                     else:
-                        region = cv2.inRange(
+                        region = cv2.inRange(  #生成精确的掩码
                             atlas_label_list[i], region_idx, region_idx
                         )
                         cnt_for_idx = cv2.findContours(
@@ -575,7 +596,7 @@ def applyMask(    #生成的掩码应用于原始图像
                     if len(cnt_for_idx) >= 1:
                         cnts_orig.append(cnt_for_idx)
                         labels_from_region.append(region_idx)
-            else:
+            else:  #查找轮廓
                 cnts_orig = cv2.findContours(
                     atlas_bw.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
                 )
@@ -589,6 +610,13 @@ def applyMask(    #生成的掩码应用于原始图像
                 labels_cnts.append(cnt_orig)  #将当前轮廓 cnt_orig 添加到 labels_cnts 列表中
                 try:
                     cv2.drawContours(img, cnt_orig, -1, (255, 0, 0), 1)  #在图像 img 上绘制轮廓 cnt_orig，轮廓颜色为蓝色
+                    # tempsave_path = r'D:\temp\test\contoured_image.png'
+                    parent_dir = os.path.dirname(os.path.normpath(mask_path))
+                    relative_output_dir = 'output_Contours'
+                    tempSave_dir = os.path.join(parent_dir, relative_output_dir)
+                    os.makedirs(tempSave_dir, exist_ok=True)
+                    Countoursave_path = os.path.join(tempSave_dir, 'contoured_image.png')
+                    cv2.imwrite(Countoursave_path, img)
                 except:
                     print("Could not draw contour!")
                 # try:  将轮廓点转换为列表形式
@@ -686,22 +714,22 @@ def applyMask(    #生成的掩码应用于原始图像
                 except:
                     print("Could not draw contour!")
         if not atlas_to_brain_align and use_unet:
-            cortex_mask = cv2.imread(os.path.join(mask_path, "{}_mask.png".format(i)))
-            cortex_mask = cv2.cvtColor(cortex_mask, cv2.COLOR_RGB2GRAY)
-            thresh, cortex_mask_thresh = cv2.threshold(cortex_mask, 128, 255, 0)
-            cortex_cnt = cv2.findContours(
+            cortex_mask = cv2.imread(os.path.join(mask_path, "{}_mask.png".format(i))) #加载mask图像
+            cortex_mask = cv2.cvtColor(cortex_mask, cv2.COLOR_RGB2GRAY)  #rgb转gray
+            thresh, cortex_mask_thresh = cv2.threshold(cortex_mask, 128, 255, 0)  #转换的阈值为128
+            cortex_cnt = cv2.findContours(  #查找轮廓
                 cortex_mask_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE
             )
-            cortex_cnt = imutils.grab_contours(cortex_cnt)
+            cortex_cnt = imutils.grab_contours(cortex_cnt)#获取轮廓列表
         labels_x = []
         labels_y = []
-        areas = []
-        sorted_labels_arr = []
+        areas = []  #轮廓面积
+        sorted_labels_arr = []#标签排序后的数组
         label_jitter = 0
         mask = np.zeros(mask_color.shape, dtype="uint8")
-        cnts = cnts_orig
-        print("LEN CNTS: {}".format(len(cnts)))
-        print("LEN LABELS: {}".format(len(orig_list_labels_sorted)))
+        cnts = cnts_orig  #轮廓列表
+        print("LEN CNTS: {}".format(len(cnts)))  #输出轮廓数量
+        print("LEN LABELS: {}".format(len(orig_list_labels_sorted))) #输出标签数量
         if original_label or not atlas_to_brain_align:
             labels_from_region = [0] * len(orig_list_labels_sorted)
         for (z, cnt), (coord_idx, coord), label_from_region in zip(
