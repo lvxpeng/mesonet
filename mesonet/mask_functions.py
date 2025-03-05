@@ -5,6 +5,8 @@ https://github.com/bf777/MesoNet
 Licensed under the MIT License (see LICENSE for details)
 This file has been adapted from data.py in https://github.com/zhixuhao/unet
 """
+import tifffile
+
 from mesonet.utils import natural_sort_key
 import numpy as np
 import scipy.io as sio
@@ -14,6 +16,8 @@ import skimage.io as io
 import skimage.transform as trans
 from skimage.util import img_as_ubyte
 import cv2
+from skimage.transform import resize
+import tifffile
 import imageio
 import imutils
 import scipy
@@ -54,35 +58,72 @@ def testGenerator(
     img_list.sort(key=natural_sort_key)
     tif_list = glob.glob(os.path.join(test_path, "*tif"))
     if tif_list:
-        tif_stack = imageio.mimread(os.path.join(test_path, tif_list[0]))
+        # tif_stack = imageio.mimread(os.path.join(test_path, tif_list[0]))      旧代码
+        tif_stack=tifffile.imread(tif_list[0])
         num_image = len(tif_stack)
+
+        # 防止num_image被约束
+    else:
+        num_image=len(img_list)
+        # 旧代码
+    # for i in range(num_image):
+    #     if len(tif_list) > 0:
+    #         print("TIF detected")
+    #         img = tif_stack[i]
+    #         img = np.uint8(img)
+    #         img = cv2.resize(img, target_size)
+    #     elif len(tif_list) == 0:
+    #         if atlas_to_brain_align:
+    #             img = io.imread(os.path.join(test_path, img_list[i]))
+    #         else:
+    #             try:
+    #                 img = io.imread(
+    #                     os.path.join(test_path, "{}_brain_warp.{}".format(i, suff))
+    #                 )
+    #             except:
+    #                 img = io.imread(os.path.join(test_path, img_list[i]))
+    #         img = trans.resize(img, target_size)
+    #     img = img_as_ubyte(img)
+    #     io.imsave(os.path.join(output_mask_path, "{}.{}".format(i, suff)), img)
+    #     img = io.imread(
+    #         os.path.join(output_mask_path, "{}.{}".format(i, suff)), as_gray=as_gray
+    #     )
+    #     if img.dtype == "uint8":   #把0-255的像素值归一化到0-1
+    #         img = img / 255
+    #     img = np.reshape(img, img.shape + (1,)) if (not flag_multi_class) else img
+    #     img = np.reshape(img, (1,) + img.shape)
+    #     yield img
     for i in range(num_image):
-        if len(tif_list) > 0:
-            print("TIF detected")
+        if tif_list:
             img = tif_stack[i]
-            img = np.uint8(img)
-            img = cv2.resize(img, target_size)
-        elif len(tif_list) == 0:
-            if atlas_to_brain_align:
-                img = io.imread(os.path.join(test_path, img_list[i]))
-            else:
-                try:
+        else:
+            try:
+                if atlas_to_brain_align:
+                    img = io.imread(os.path.join(test_path, img_list[i]))
+                else:
                     img = io.imread(
                         os.path.join(test_path, "{}_brain_warp.{}".format(i, suff))
                     )
-                except:
-                    img = io.imread(os.path.join(test_path, img_list[i]))
-            img = trans.resize(img, target_size)
-        img = img_as_ubyte(img)
-        io.imsave(os.path.join(output_mask_path, "{}.{}".format(i, suff)), img)
-        img = io.imread(
-            os.path.join(output_mask_path, "{}.{}".format(i, suff)), as_gray=as_gray
-        )
-        if img.dtype == "uint8":   #把0-255的像素值归一化到0-1
-            img = img / 255
-        img = np.reshape(img, img.shape + (1,)) if (not flag_multi_class) else img
-        img = np.reshape(img, (1,) + img.shape)
-        yield img
+            except Exception as e:
+                print(f"Error reading brain warp image: {e}")
+                img = io.imread(os.path.join(test_path, img_list[i]))
+
+        # 调整大小并转换为 uint8 类型
+        img_resized = resize(img, target_size)
+        img_uint8 = img_as_ubyte(img_resized)
+
+        # 保存图像
+        output_filename = os.path.join(output_mask_path, "{}.{}".format(i, suff))
+        io.imsave(output_filename, img_uint8)
+
+        # 重新加载图像并进行进一步处理
+        img_loaded = io.imread(output_filename, as_gray=as_gray)
+        if img_loaded.dtype == "uint8":  # 把0-255的像素值归一化到0-1
+            img_loaded = img_loaded / 255.
+        img_final = np.reshape(img_loaded, img_loaded.shape + (1,)) if not flag_multi_class else img_loaded
+        img_final = np.reshape(img_final, (1,) + img_final.shape)
+
+        yield img_final
 
 
 def labelVisualize(num_class, color_dict, img):
@@ -113,7 +154,12 @@ def saveResult(save_path, npyfile, flag_multi_class=False, num_class=2):
             if flag_multi_class
             else item[:, :, 0]
         )
-
+# 旧-----------------------------------------------------------------------
+#         img = img.astype(np.uint8)
+#         img_to_save = Image.fromarray(img)
+#         img_to_save.save(os.path.join(save_path, "{}.png".format(i)))
+        # ----------------------------------------------------------------
+# 新---------------------------------------------------------------------------
         # 确保 img 是一个 NumPy 数组
         if not isinstance(img, np.ndarray):
             img = np.array(img)
@@ -129,7 +175,7 @@ def saveResult(save_path, npyfile, flag_multi_class=False, num_class=2):
 
         # 保存图像
         img_pil.save(os.path.join(save_path, "{}.png".format(i)))
-
+# -------------------------------------------------------------------------------
 
 def returnResult(save_path, npyfile):
     """
