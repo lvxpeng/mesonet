@@ -4,9 +4,17 @@ Authors: Brandon Forys and Dongsheng Xiao, Murphy Lab
 https://github.com/bf777/MesoNet
 Licensed under the Creative Commons Attribution 4.0 International License (see LICENSE for details)
 """
+import sys
+
 import deeplabcut
+import tifffile
+import yaml
+from skimage import io
+from skimage.transform import resize
+from skimage.util import img_as_ubyte
+
 from mesonet.atlas_brain_matching import atlasBrainMatch
-from mesonet.utils import parse_yaml, natural_sort_key
+from mesonet.utils import parse_yaml, natural_sort_key,findshuffle,findfirstyaml_key,find_first_metayaml_key
 from deeplabcut.utils.auxiliaryfunctions import read_config, write_config
 import cv2
 import glob
@@ -108,11 +116,35 @@ def DLCPredict(
         sensory_img_dir = sensory_path
     else:
         sensory_img_dir = ""
-    tif_list = glob.glob(os.path.join(input_file, "*tif"))
+        # 读取inputfile中的tif文件
+
+
+    tif_list = glob.glob(os.path.join(input_file, "*tif")) #读取tif路径
     if tif_list:
-        print(tif_list)
-        tif_stack = imageio.mimread(os.path.join(input_file, tif_list[0]))
-        filenames = tif_stack
+        outputimagepath = os.path.join(output, 'tif_to_image')
+        tif_stack = tifffile.imread(tif_list[0])
+        number_images = len(tif_stack)
+        print('number_images:', number_images)
+
+        if not os.path.isdir(outputimagepath):
+            os.makedirs(outputimagepath)
+            print('output image dir:', outputimagepath)
+
+        for i in range(number_images):
+            image = tif_stack[i]
+            imageresized = resize(image, (512, 512))
+            imageunite8 = img_as_ubyte(imageresized)
+            outputfilename = os.path.join(outputimagepath, '{}.png'.format(i))
+            io.imsave(outputfilename, imageunite8)  # 保存到outputimagepath
+
+        # 所有TIFF图像都已转换并保存为PNG后，生成filenames列表
+        filenames = glob.glob(os.path.join(outputimagepath, "*.png"))
+        filenames.sort(key=natural_sort_key)
+        input_file = outputimagepath
+        # print(tif_list)
+        # # tif_stack = imageio.mimread(os.path.join(input_file, tif_list[0]))
+        # tif_stack = tifffile.imread(os.path.join(input_file,tif_list[0]))
+        # filenames = tif_stack  #图片矩阵
     else:
         filenames = glob.glob(os.path.join(input_file, "*.png"))
         filenames.sort(key=natural_sort_key)
@@ -121,58 +153,93 @@ def DLCPredict(
     print(len(filenames))
     for filename in filenames:
         print(filename)
-        if tif_list:
-            img = filename
-            img = np.uint8(img)
-            img = cv2.resize(img, size)
-            height, width = img.shape
-        else:
-            img = cv2.imread(filename)
-            img = np.uint8(img)
-            img = cv2.resize(img, size)
-            height, width, layers = img.shape
-        size = (width, height)
+        img = cv2.imread(filename)
+        img = np.uint8(img)
+        img = cv2.resize(img, size)
         img_array.append(img)
+        # print(filename)
+        # if tif_list:
+        #     img = filename
+        #     img = np.uint8(img)
+        #     img = cv2.resize(img, size)
+        #     height, width = img.shape
+        # else:
+        #     img = cv2.imread(filename)
+        #     img = np.uint8(img)
+        #     img = cv2.resize(img, size)
+        #     height, width, layers = img.shape
+        # size = (width, height)
+        # img_array.append(img)
 
     if len(img_array) > 0:
         video_output_path = os.path.join(output, "dlc_output")
 
         video_name = os.path.join(video_output_path, "tmp_video.mp4")
+        # video_name = os.path.join(video_output_path, "tmp_video.avi")
 
         if not os.path.isdir(video_output_path):
-            os.mkdir(video_output_path)
+            # os.mkdir(video_output_path)
+            os.makedirs(video_output_path)
         if not coords_input_file:
             # fourcc = cv2.VideoWriter_fourcc(*'DIB ')
-            if platform == "linux" or platform == "linux2" or platform == "darwin":
-                fourcc = cv2.VideoWriter_fourcc("M", "P", "E", "G")
+            # if platform == "linux" or platform == "linux2" or platform == "darwin":
+            if sys.platform.startswith('linux') or sys.platform == 'darwin':
+                # fourcc = cv2.VideoWriter_fourcc("M", "P", "E", "G")
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
             else:
                 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
             out = cv2.VideoWriter(video_name, fourcc, 30, size)
-            for i in img_array:
+            try:
+              for i,image in enumerate(img_array):
                 # print("img {} written!".format(i))
-                out.write(i)
-            out.release()
+                if image.dtype != np.uint8:
+                    image=image.astype(np.uint8)
+                if image.shape[:2] != size:
+                    image=cv2.resize(image, size)
+                out.write(image)
+            except Exception as e:
+                print(f"Error writing video frame: {e}")
+            finally:
+              out.release()
+            print(f"Video saved to {video_name}")
+
+
+            # 验证视频是否成功创建
+            if os.path.exists(video_name):
+                cap = cv2.VideoCapture(video_name)
+                if cap.isOpened():
+                    print("The video file was created successfully and can be opened.")
+                else:
+                    print("Failed to open the generated video file.")
+                cap.release()
 
             print("DLC config file path: {}".format(config))
 
+            shuffle = findshuffle(config)
+
             deeplabcut.analyze_videos(
-                config, [video_output_path], videotype=".mp4", save_as_csv=True
+                # config, [video_output_path], videotype=".mp4", save_as_csv=True
+            config, video_output_path, videotype = "mp4",shuffle=shuffle,save_as_csv = True
+                # config, [video_output_path], videotype = ".avi", save_as_csv = True
             )
-            deeplabcut.create_labeled_video(config, [video_name], filtered=True)
+            deeplabcut.create_labeled_video(config, video_name, shuffle=shuffle,filtered=True)
+            # deeplabcut.create_video_with_all_detections(config, [video_name], shuffle=2,filtered=True)
             #             if "2." in deeplabcut.__version__:
             #                 scorer_name = "DeepCut"
             #             else:
             scorer_name = "DLC"
             output_video_name = ""
-            coords_input = ""
+            coords_input = video_output_path
             for filename in glob.glob(
                 os.path.join(video_output_path, "tmp_video" + scorer_name + "*.*")
             ):
                 try:
-                    if ".mp4" in filename:
+                    if filename.endswith(".mp4") or filename.endswith(".avi"):
                         output_video_name = filename
-                    elif ".csv" in filename:
+                    elif filename.endswith(".csv"):
                         coords_input = filename
+                    else:
+                        print(f"Unsupported file type: {filename}")
                 except FileNotFoundError:
                     print(
                         "Please ensure that an output video and corresponding datafile from DeepLabCut are in the folder!"
@@ -194,6 +261,10 @@ def DLCPredict(
         os.chdir(video_output_path)
 
         print("Landmark prediction complete!")
+
+        IsMulti=findfirstyaml_key(config,'multianimalproject')
+
+
         if not atlas:    #true
             atlasBrainMatch(
                 input_file,
@@ -215,6 +286,7 @@ def DLCPredict(
                 original_label,
                 use_voxelmorph, #false
                 exist_transform, #false
+                IsMulti,
                 voxelmorph_model,
                 template_path,
                 flow_path,
@@ -261,12 +333,14 @@ def DLCPredictBehavior(config, input_file, output):
     elif len(video_array) > 0:
         video_output_path = video_array
         video_name = video_array
-
+    shuffle = findshuffle(config)
     deeplabcut.analyze_videos(
-        config, video_output_path, videotype=".mp4", save_as_csv=True, destfolder=output
+        # config, video_output_path, videotype=".mp4", save_as_csv=True, destfolder=output
+        config, video_output_path, videotype=".mp4",shuffle=shuffle,save_as_csv=True, destfolder=output
     )
     deeplabcut.create_labeled_video(
-        config, video_name, filtered=True, destfolder=output
+    # deeplabcut.create_video_with_all_detections(
+        config, video_name, filtered=True,shuffle=shuffle, destfolder=output
     )
     cv2.destroyAllWindows()
 

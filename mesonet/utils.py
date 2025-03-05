@@ -329,6 +329,102 @@ def convert_to_png(input_folder):
             npy = npy * 255
             cv2.imwrite(img_path, npy)
 
+def findmatadata(
+        config_path
+):
+    """
+    找到metadata.yaml的路径
+    """
+    with open(config_path, "r",encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+        projectpath = config.get("project_path")
+    search_pattern = os.path.join(projectpath, 'training-datasets', 'iteration-0', '**', 'metadata.yaml')
+
+    # 使用 iglob 进行递归搜索，返回一个迭代器
+    for filepath in glob.iglob(search_pattern, recursive=True):
+        print(f"Found metadata.yaml at: {filepath}")
+        return filepath  # 如果只需要找到第一个匹配项，直接返回
+    return None
+
+
+def findfirstyaml_key(yaml_path,keywords):
+    """
+    找到config.yaml中的键值
+    """
+    with open(yaml_path, 'r', encoding='utf-8') as file:
+        for doc in yaml.safe_load_all(file):
+            if isinstance(doc, dict):
+                if keywords in doc:
+                    value = doc.get(keywords)
+                    # 如果值是列表或元组，返回第一个元素；如果不是，则直接返回值
+                    if isinstance(value, (list, tuple)) and len(value) > 0:
+                        return value[0]
+                    else:
+                        return value
+            else:
+                print("Document is not a dictionary, skipping.")
+
+        # 如果没有找到关键词，返回 None
+    return None
+def findshuffle(
+        config_path
+):
+    """
+    找到metadata中的index
+    """
+    metadatafile = findmatadata(config_path)
+    if metadatafile is None:
+        print('No metadata.yaml found,the config.yaml path is error,please check.')
+        return 1
+    else:
+        train_fraction=find_first_metayaml_key(metadatafile,'train_fraction')
+        trainset = findfirstyaml_key(config_path,'TrainingFraction')
+        if train_fraction==trainset:
+          index = find_first_metayaml_key(metadatafile,'index')
+          return index
+        else:
+            return 1
+
+
+def find_first_yaml_key_value(data, keyword):
+    """
+    递归查找字典中首次出现的指定键的值。
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key == keyword:
+                return value
+            else:
+                result = find_first_yaml_key_value(value, keyword)
+                if result is not None:
+                    return result
+    elif isinstance(data, list):
+        for item in data:
+            result = find_first_yaml_key_value(item, keyword)
+            if result is not None:
+                return result
+    return None
+
+
+def find_first_metayaml_key(yaml_path, keyword):
+    """
+    查找 metadata.YAML 文件中首次出现的指定键的值。
+    """
+
+    with open(yaml_path, 'r', encoding='utf-8') as file:
+        try:
+            for doc in yaml.safe_load_all(file):  # 如果文件包含多个文档，使用 safe_load_all
+                if isinstance(doc, (dict, list)):
+                    value = find_first_yaml_key_value(doc, keyword)
+                    if value is not None:
+                        return value
+                else:
+                    print("Document is not a dictionary or list, skipping.")
+        except yaml.YAMLError as exc:
+            print(f"Error in YAML file: {exc}")
+
+    # 如果没有找到关键词，返回 None
+    return None
 
 # def plot_flow(flow_dir, output_dir):
 #     """

@@ -212,6 +212,7 @@ def atlasBrainMatch(
         original_label,
         use_voxelmorph,
         exist_transform,
+        IsMulti,
         voxelmorph_model="motif_model_atlas.h5",
         vxm_template_path="templates",
         dlc_template_path="dlc_templates",
@@ -267,6 +268,7 @@ def atlasBrainMatch(
     br_list = []
     olfactory_bulbs_to_use_list = []
     olfactory_bulbs_to_use_pre_align_list = []
+
 
     voxelmorph_model_path = os.path.join(
         git_repo_base, "models", "voxelmorph", voxelmorph_model
@@ -422,10 +424,35 @@ def atlasBrainMatch(
     else:
         bregma_present = False
 
-    coords = pd.read_csv(coords_input)
-    x_coord = coords.iloc[2:, 1::3]
-    y_coord = coords.iloc[2:, 2::3]
-    accuracy = coords.iloc[2:, 3::3]
+    if not coords_input or not isinstance(coords_input, str) or not os.path.isfile(coords_input):
+            raise ValueError(f"Invalid file path for coords_input: {coords_input}")
+
+    print(f"Reading coordinates from {coords_input}")  # 增加调试信息
+    try:
+      coords = pd.read_csv(coords_input)
+    except FileNotFoundError as fnf_error:
+        print(f"File not found error: {fnf_error}")
+        raise
+    except pd.errors.EmptyDataError as empty_data_error:
+        print(f"Empty data error: {empty_data_error}")
+        raise
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        raise e
+    pass
+    # singel animal
+    # x_coord = coords.iloc[2:, 1::3]
+    # y_coord = coords.iloc[2:, 2::3]
+    # accuracy = coords.iloc[2:, 3::3]
+    if IsMulti:
+        is_multianimal=1
+    else:
+        is_multianimal=0
+    startrow=2+is_multianimal
+# multi animal
+    x_coord = coords.iloc[startrow:, 1::3]
+    y_coord = coords.iloc[startrow:, 2::3]
+    accuracy = coords.iloc[startrow:, 3::3]
     acc_left_total = accuracy.iloc[:, 0:5]
     acc_right_total = accuracy.iloc[:, 3:8]
     landmark_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8]  # [0, 3, 2, 1]
