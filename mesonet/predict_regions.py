@@ -90,9 +90,9 @@ def predictRegion(
     # Output folder for transparent masks and masks overlaid onto brain image
     output_overlay_path = os.path.join(output, "output_overlay")
     if not os.path.isdir(output_mask_path):
-        os.mkdir(output_mask_path)
+        os.makedirs(output_mask_path)
     if not os.path.isdir(output_overlay_path):
-        os.mkdir(output_overlay_path)
+        os.makedirs(output_overlay_path)
     # Loads in existing model
     print(model)
     if not mask_generate:
